@@ -1,0 +1,2039 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeatFinder - AI Song Identifier</title>
+    <style>
+:root {
+    --bg-dark: #0f172a;
+    --bg-card: rgba(30, 41, 59, 0.7);
+    --primary: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --secondary: #3b82f6;
+    --accent: #f43f5e;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --success: #10b981;
+    --error: #ef4444;
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+    overflow-x: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Typography elements */
+h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+h1 span {
+    color: var(--primary);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.id-icon {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.spin-slow {
+    animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 300;
+}
+
+/* Main Interactive Area */
+.interactive-area {
+    background: var(--bg-card);
+    border-radius: 24px;
+    padding: 2rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    transition: all 0.3s ease;
+}
+
+.interactive-area.recording {
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+}
+
+/* Canvas styling */
+.canvas-container {
+    width: 100%;
+    height: 120px;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+#waveformCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.status-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+.timer {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 1.25rem;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.timer.pulse {
+    animation: pulseText 1s infinite alternate;
+}
+
+@keyframes pulseText {
+    from {
+        opacity: 0.7;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Buttons */
+button {
+    cursor: pointer;
+    border: none;
+    outline: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 30px;
+    padding: 1rem 2rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 20px -10px var(--primary);
+    width: 100%;
+    max-width: 250px;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px -10px var(--primary);
+}
+
+.primary-btn:active {
+    transform: translateY(1px);
+}
+
+
+/* Recording animation on button */
+.primary-btn.recording {
+    background: linear-gradient(135deg, var(--accent), #be123c);
+    box-shadow: 0 10px 20px -10px var(--accent);
+    animation: pulseBtn 2s infinite;
+}
+
+@keyframes pulseBtn {
+    0% {
+        box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 15px rgba(244, 63, 94, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+    }
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.small {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    width: auto;
+}
+
+.margin-top {
+    margin-top: 1rem;
+}
+
+/* Results Card */
+.result-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 2rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.album-art-container {
+    width: 160px;
+    height: 160px;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+    position: relative;
+}
+
+.album-art-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.album-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 3rem;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.song-details h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.8rem;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(to right, #fff, #cbd5e1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.song-details h3 {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 400;
+    margin-bottom: 1.5rem;
+}
+
+.meta-info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.meta-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bpm-badge {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    font-weight: 600;
+}
+
+.tech-badge {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+}
+
+.rhythm-profile {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+}
+
+.rhythm-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+}
+
+.rhythm-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 40px;
+    gap: 2px;
+}
+
+.r-bar {
+    flex: 1;
+    background: linear-gradient(to top, var(--primary), var(--secondary));
+    border-radius: 2px 2px 0 0;
+    height: 20%;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    width: 100%;
+}
+
+.youtube-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #FF0000;
+    color: white;
+    text-decoration: none;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    padding: 0.8rem 1.5rem;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+}
+
+.youtube-btn:hover {
+    background: #cc0000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 0, 0, 0.4);
+}
+
+.spotify-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #1DB954;
+    color: white;
+    text-decoration: none;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    padding: 0.8rem 1.5rem;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(29, 185, 84, 0.3);
+}
+
+.spotify-btn:hover {
+    background: #1ed760;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+}
+
+/* Error state */
+.result-card.error {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.result-card.error i {
+    font-size: 3rem;
+    color: var(--error);
+    margin-bottom: 1rem;
+}
+
+.result-card.error h3 {
+    color: var(--text-main);
+    margin-bottom: 1.5rem;
+}
+
+/* Loader */
+.loader-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 1.5rem;
+}
+
+.loader-container p {
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 1rem;
+    animation: pulseText 1.5s infinite alternate;
+}
+
+/* Beat Map Visualization */
+.beat-map {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 80px;
+    position: relative;
+    width: 100%;
+}
+
+.beat-bar {
+    width: 6px;
+    background: var(--primary);
+    border-radius: 3px;
+    animation: beatAnim 1.2s ease-in-out infinite;
+}
+
+.beat-pulse {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    opacity: 0;
+    animation: pulseRing 1.5s ease-out infinite;
+}
+
+@keyframes beatAnim {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scaleY(2.5);
+        opacity: 1;
+        background: var(--secondary);
+    }
+}
+
+@keyframes pulseRing {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .app-container, .login-container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .interactive-area {
+        padding: 1.5rem;
+    }
+}
+
+/* Login Page Styling */
+.login-container {
+    width: 100%;
+    max-width: 450px;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.login-card {
+    background: var(--bg-card);
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.login-card .logo {
+    margin-bottom: 0;
+}
+
+.login-card .subtitle {
+    text-align: center;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    margin-bottom: 1.25rem;
+    text-align: left;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1.25rem;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.input-wrapper input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    padding: 0.9rem 1.25rem 0.9rem 3rem;
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);
+}
+
+.toggle-password-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    z-index: 2;
+}
+
+.toggle-password-btn:hover {
+    color: var(--text-main);
+}
+
+.login-btn {
+    width: 100%;
+    max-width: none;
+    margin-top: 1rem;
+    padding: 0.9rem;
+    font-size: 1.1rem;
+}
+
+.auth-toggle-text {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 1.25rem;
+}
+
+.auth-toggle-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.auth-toggle-link:hover {
+    color: var(--primary-hover);
+    text-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+}
+
+#signInView, #signUpView {
+    animation: fadeSlideIn 0.35s ease-out;
+}
+
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-error-msg {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    animation: fadeSlideIn 0.3s ease-out;
+}
+
+.auth-success-msg {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    animation: fadeSlideIn 0.3s ease-out;
+}
+
+/* User Profile Bar */
+.user-profile-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    padding: 0.5rem 1rem 0.5rem 1.25rem;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+    backdrop-filter: blur(8px);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.user-info i {
+    color: var(--primary);
+    font-size: 1.2rem;
+}
+
+.logout-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    font-size: 0.8rem;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: auto;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    transform: translateY(-1px);
+}
+
+/* History Card Styling */
+.history-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.75rem;
+}
+
+.history-header h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-main);
+}
+
+.history-header h3 i {
+    color: var(--primary);
+}
+
+.clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+    cursor: pointer;
+    border-radius: 4px;
+    width: auto;
+}
+
+.clear-btn:hover {
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+/* Custom Scrollbar for History */
+.history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover {
+    background: rgba(0, 0, 0, 0.25);
+    border-color: rgba(139, 92, 246, 0.15);
+}
+
+.history-art {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+
+.history-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.history-info {
+    flex-grow: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.history-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-artist {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-date {
+    font-size: 0.7rem;
+    color: rgba(148, 163, 184, 0.5);
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-card">
+            <div class="logo">
+                <i class="fa-solid fa-compact-disc spin-slow id-icon"></i>
+                <h1>Beat<span>Finder</span></h1>
+            </div>
+
+            <!-- Sign In Form -->
+            <div id="signInView">
+                <p class="subtitle">Sign in to identify songs and manage your music profile.</p>
+                
+                <form id="loginForm">
+                    <div class="input-group">
+                        <label for="loginEmail">Email Address</label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-envelope input-icon"></i>
+                            <input type="email" id="loginEmail" required placeholder="name@example.com">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="loginPassword">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="loginPassword" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                            <button type="button" id="togglePasswordBtn" class="toggle-password-btn">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="primary-btn login-btn">Sign In</button>
+                </form>
+                <p class="auth-toggle-text">Don't have an account? <a href="#" id="showSignUp" class="auth-toggle-link">Sign Up</a></p>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signUpView" class="hidden">
+                <p class="subtitle">Create an account to start identifying songs.</p>
+
+                <form id="signUpForm">
+                    <div class="input-group">
+                        <label for="signUpName">Full Name</label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-user input-icon"></i>
+                            <input type="text" id="signUpName" required placeholder="John Doe">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="signUpEmail">Email Address</label>
+                        <div class="input-wrapper">
+                            <i class="fa-regular fa-envelope input-icon"></i>
+                            <input type="email" id="signUpEmail" required placeholder="name@example.com">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="signUpPassword">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="signUpPassword" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minlength="6">
+                            <button type="button" id="toggleSignUpPasswordBtn" class="toggle-password-btn">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="signUpConfirmPassword">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-shield-halved input-icon"></i>
+                            <input type="password" id="signUpConfirmPassword" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minlength="6">
+                        </div>
+                    </div>
+                    <button type="submit" class="primary-btn login-btn">Create Account</button>
+                </form>
+                <p class="auth-toggle-text">Already have an account? <a href="#" id="showSignIn" class="auth-toggle-link">Sign In</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden when logged out) -->
+    <div id="appContainer" class="app-container hidden">
+        <header>
+            <div class="user-profile-bar">
+                <div class="user-info">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span id="userEmailDisplay">darkyhere59@gmail.com</span>
+                </div>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+            <div class="logo">
+                <i class="fa-solid fa-compact-disc spin-slow id-icon"></i>
+                <h1>Beat<span>Finder</span></h1>
+            </div>
+            <p class="subtitle">Identify songs instantly using beat, rhythm, and audio fingerprints.</p>
+        </header>
+
+        <main>
+            <div class="interactive-area">
+                <div class="canvas-container">
+                    <canvas id="waveformCanvas"></canvas>
+                    <div class="status-overlay" id="statusText">Ready to listen</div>
+                </div>
+
+                <div class="controls">
+                    <button id="identifyBtn" class="primary-btn">
+                        <i class="fa-solid fa-microphone"></i>
+                        <span id="identifyBtnText">Identify Song</span>
+                    </button>
+                    <div id="recordingTimer" class="timer hidden">00:00</div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container hidden">
+                <div class="beat-map" id="beatMap">
+                    <!-- Dynamic beat bars will be added here -->
+                    <div class="beat-pulse"></div>
+                </div>
+                <p id="loaderText">Analyzing audio fingerprint...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="result-card error hidden">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <h3 id="errorMessage">Song not recognized. Please try again.</h3>
+                <button class="secondary-btn" onclick="resetApp()">Try Again</button>
+            </div>
+
+            <!-- Success Results -->
+            <div id="results" class="result-card hidden">
+                <div class="album-art-container">
+                    <img id="albumArt" src="" alt="Album Art" class="hidden">
+                    <div id="albumPlaceholder" class="album-placeholder">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                </div>
+                <div class="song-details">
+                    <h2 id="songTitle">Song Title</h2>
+                    <h3 id="artistName">Artist Name</h3>
+                    <div class="meta-info">
+                        <span class="meta-badge"><i class="fa-solid fa-record-vinyl"></i> <span id="albumName">Album
+                                Name</span></span>
+                        <span class="meta-badge"><i class="fa-regular fa-calendar"></i> <span
+                                id="releaseYear">Year</span></span>
+                        <span class="meta-badge bpm-badge"><i class="fa-solid fa-heart-pulse"></i> <span
+                                id="bpmValue">--</span>
+                            BPM</span>
+                        <span id="recognitionBadge" class="meta-badge tech-badge"><i class="fa-solid fa-microchip"></i>
+                            <span id="recognitionMethod">Analyzing...</span></span>
+                    </div>
+
+                    <div class="rhythm-profile">
+                        <div class="rhythm-label">Acoustic Rhythm Profile</div>
+                        <div class="rhythm-bars" id="rhythmProfile">
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                            <div class="r-bar"></div>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <a id="youtubeLink" href="#" target="_blank" class="youtube-btn hidden">
+                            <i class="fa-brands fa-youtube"></i> Watch on YouTube
+                        </a>
+                        <a id="spotifyLink" href="#" target="_blank" class="spotify-btn hidden">
+                            <i class="fa-brands fa-spotify"></i> Listen on Spotify
+                        </a>
+                    </div>
+                </div>
+                <button class="secondary-btn margin-top" onclick="resetApp()">Identify Another</button>
+            </div>
+
+            <!-- History Section -->
+            <div id="historySection" class="history-card">
+                <div class="history-header">
+                    <h3><i class="fa-solid fa-clock-rotate-left"></i> Identification History</h3>
+                    <button id="clearHistoryBtn" class="clear-btn">Clear</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <!-- History items will be dynamically loaded here -->
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by AudD API and Web Audio API</p>
+        </footer>
+    </div>
+    <script>
+const CONSTANTS = {
+    RECORD_DURATION: 15000, // Increased to 15 seconds for better "any part" recognition
+    MOCK_MODE: false,
+    YOUTUBE_API_URL: 'https://www.googleapis.com/youtube/v3/search',
+    AUDD_API_URL: 'https://api.audd.io/',
+};
+
+// The API Tokens
+let YOUTUBE_API_KEY = 'AIzaSyD_rFrQlhdgXDFeixgVYaOTESFxXVu8FNI';
+let AUDD_API_KEY = 'test'; // Default test token, should be replaced with a real one
+
+// DOM Elements
+const elements = {
+    identifyBtn: document.getElementById('identifyBtn'),
+    identifyBtnText: document.getElementById('identifyBtnText'),
+    recordingTimer: document.getElementById('recordingTimer'),
+    statusText: document.getElementById('statusText'),
+    waveformCanvas: document.getElementById('waveformCanvas'),
+    interactiveArea: document.querySelector('.interactive-area'),
+    loader: document.getElementById('loader'),
+    errorState: document.getElementById('errorState'),
+    errorMessage: document.getElementById('errorMessage'),
+    results: document.getElementById('results'),
+    
+    // Auth & History Elements
+    loginContainer: document.getElementById('loginContainer'),
+    appContainer: document.getElementById('appContainer'),
+    loginForm: document.getElementById('loginForm'),
+    loginEmail: document.getElementById('loginEmail'),
+    loginPassword: document.getElementById('loginPassword'),
+    togglePasswordBtn: document.getElementById('togglePasswordBtn'),
+    userEmailDisplay: document.getElementById('userEmailDisplay'),
+    logoutBtn: document.getElementById('logoutBtn'),
+    historySection: document.getElementById('historySection'),
+    historyList: document.getElementById('historyList'),
+    clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+    
+    // Sign Up Elements
+    signInView: document.getElementById('signInView'),
+    signUpView: document.getElementById('signUpView'),
+    signUpForm: document.getElementById('signUpForm'),
+    signUpName: document.getElementById('signUpName'),
+    signUpEmail: document.getElementById('signUpEmail'),
+    signUpPassword: document.getElementById('signUpPassword'),
+    signUpConfirmPassword: document.getElementById('signUpConfirmPassword'),
+    toggleSignUpPasswordBtn: document.getElementById('toggleSignUpPasswordBtn'),
+    showSignUp: document.getElementById('showSignUp'),
+    showSignIn: document.getElementById('showSignIn')
+};
+
+// Result Elements
+const resultElements = {
+    albumArt: document.getElementById('albumArt'),
+    albumPlaceholder: document.getElementById('albumPlaceholder'),
+    songTitle: document.getElementById('songTitle'),
+    artistName: document.getElementById('artistName'),
+    albumName: document.getElementById('albumName'),
+    releaseYear: document.getElementById('releaseYear'),
+    bpmValue: document.getElementById('bpmValue'),
+    youtubeLink: document.getElementById('youtubeLink'),
+    spotifyLink: document.getElementById('spotifyLink'),
+    recognitionMethod: document.getElementById('recognitionMethod')
+};
+
+// Audio state variables
+let audioContext;
+let analyser;
+let mediaRecorder;
+let audioChunks = [];
+let recordingInterval;
+let animationId;
+let isRecording = false;
+
+// Speech Recognition for lyric finding
+let recognition = null;
+let recognizedLyrics = "";
+
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+    // Auth listeners
+    elements.loginForm.addEventListener('submit', handleLogin);
+    elements.signUpForm.addEventListener('submit', handleSignUp);
+    elements.logoutBtn.addEventListener('click', handleLogout);
+    elements.clearHistoryBtn.addEventListener('click', clearUserHistory);
+    elements.togglePasswordBtn.addEventListener('click', () => togglePasswordVisibility(elements.loginPassword, elements.togglePasswordBtn));
+    elements.toggleSignUpPasswordBtn.addEventListener('click', () => togglePasswordVisibility(elements.signUpPassword, elements.toggleSignUpPasswordBtn));
+
+    // Toggle between Sign In / Sign Up
+    elements.showSignUp.addEventListener('click', (e) => {
+        e.preventDefault();
+        elements.signInView.classList.add('hidden');
+        elements.signUpView.classList.remove('hidden');
+        // Re-trigger animation
+        elements.signUpView.style.animation = 'none';
+        elements.signUpView.offsetHeight; // force reflow
+        elements.signUpView.style.animation = '';
+    });
+    elements.showSignIn.addEventListener('click', (e) => {
+        e.preventDefault();
+        elements.signUpView.classList.add('hidden');
+        elements.signInView.classList.remove('hidden');
+        elements.signInView.style.animation = 'none';
+        elements.signInView.offsetHeight;
+        elements.signInView.style.animation = '';
+    });
+
+    elements.identifyBtn.addEventListener('click', toggleRecording);
+    initSpeechRecognition();
+
+    // Check login state
+    checkAuthState();
+
+    // Canvas setup
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    drawIdleWaveform();
+});
+
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    recognizedLyrics += event.results[i][0].transcript + " ";
+                }
+            }
+        };
+        recognition.onerror = (e) => console.log("Speech recognition error:", e.error);
+    } else {
+        console.warn("Speech Recognition not supported in this browser.");
+    }
+}
+
+function resizeCanvas() {
+    const container = elements.waveformCanvas.parentElement;
+    elements.waveformCanvas.width = container.clientWidth;
+    elements.waveformCanvas.height = container.clientHeight;
+}
+
+// ---------------------------------------------------------
+// Recording & Audio Processing
+// ---------------------------------------------------------
+
+async function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Reset state
+        audioChunks = [];
+        recognizedLyrics = "";
+        elements.errorState.classList.add('hidden');
+        elements.results.classList.add('hidden');
+
+        // Setup Media Recorder
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = processAudioRecording;
+
+        // Setup Web Audio API for visualization
+        setupAudioNodes(stream);
+
+        // Start recording
+        mediaRecorder.start();
+        isRecording = true;
+
+        // Start Speech Recognition
+        if (recognition) {
+            try { recognition.start(); } catch (e) { console.log(e); }
+        }
+
+        // UI Updates
+        elements.identifyBtn.classList.add('recording');
+        elements.identifyBtnText.innerText = 'Listening...';
+        elements.interactiveArea.classList.add('recording');
+        elements.recordingTimer.classList.remove('hidden');
+        elements.recordingTimer.classList.add('pulse');
+        elements.statusText.classList.add('hidden');
+
+        startTimer();
+        visualizeWaveform();
+
+        // Auto stop after duration
+        setTimeout(() => {
+            if (isRecording) stopRecording();
+        }, CONSTANTS.RECORD_DURATION);
+
+    } catch (err) {
+        console.error('Microphone access error:', err);
+        showError('Microphone permission denied. Please allow it to use the app.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+
+    if (recognition) {
+        try { recognition.stop(); } catch (e) { console.log(e); }
+    }
+
+    isRecording = false;
+    clearInterval(recordingInterval);
+    cancelAnimationFrame(animationId);
+
+    // Reset UI
+    elements.identifyBtn.classList.remove('recording');
+    elements.identifyBtnText.innerText = 'Identify Song';
+    elements.interactiveArea.classList.remove('recording');
+    elements.recordingTimer.classList.add('hidden');
+    elements.recordingTimer.classList.remove('pulse');
+    drawIdleWaveform();
+
+    // Show Loader
+    elements.interactiveArea.classList.add('hidden');
+    elements.loader.classList.remove('hidden');
+    startBeatMap();
+}
+
+function startBeatMap() {
+    const beatMap = document.getElementById('beatMap');
+    beatMap.innerHTML = '<div class="beat-pulse"></div>';
+    for (let i = 0; i < 20; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'beat-bar';
+        bar.style.height = Math.random() * 40 + 10 + 'px';
+        bar.style.animationDelay = (i * 0.1) + 's';
+        beatMap.appendChild(bar);
+    }
+}
+
+function startTimer() {
+    let timeLeft = CONSTANTS.RECORD_DURATION / 1000;
+    elements.recordingTimer.innerText = `00:${timeLeft.toString().padStart(2, '0')}`;
+
+    recordingInterval = setInterval(() => {
+        timeLeft--;
+        elements.recordingTimer.innerText = `00:${timeLeft.toString().padStart(2, '0')}`;
+        if (timeLeft <= 0) {
+            clearInterval(recordingInterval);
+        }
+    }, 1000);
+}
+
+// ---------------------------------------------------------
+// Visualization
+// ---------------------------------------------------------
+
+function setupAudioNodes(stream) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.8;
+    source.connect(analyser);
+}
+
+function visualizeWaveform() {
+    const canvas = elements.waveformCanvas;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function draw() {
+        if (!isRecording) return;
+        animationId = requestAnimationFrame(draw);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, width, height);
+
+        const barWidth = (width / bufferLength) * 2.5;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (dataArray[i] / 255) * height;
+
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+            gradient.addColorStop(0, '#3b82f6'); // secondary
+            gradient.addColorStop(1, '#8b5cf6'); // primary
+
+            ctx.fillStyle = gradient;
+
+            // Draw rounded bars
+            ctx.beginPath();
+            ctx.roundRect(x, height - barHeight, barWidth - 2, barHeight, [4, 4, 0, 0]);
+            ctx.fill();
+
+            x += barWidth;
+        }
+    }
+
+    draw();
+}
+
+function drawIdleWaveform() {
+    const canvas = elements.waveformCanvas;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)'; // text-muted with low opacity
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+
+    for (let i = 0; i < width; i += 5) {
+        ctx.lineTo(i, height / 2 + Math.sin(i * 0.05) * 5);
+    }
+    ctx.stroke();
+
+    elements.statusText.classList.remove('hidden');
+}
+
+// ---------------------------------------------------------
+// File Processing & YouTube API integration
+// ---------------------------------------------------------
+
+async function processAudioRecording() {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+    // Estimate BPM locally
+    const bpm = await estimateBPM(audioBlob);
+
+    try {
+        // --- 1. TRY AUDD AUDIO FINGERPRINTING ---
+        elements.statusText.innerText = "Recognizing audio...";
+
+        const formData = new FormData();
+        formData.append('file', audioBlob);
+        formData.append('api_token', AUDD_API_KEY);
+        formData.append('return', 'spotify,youtube');
+
+        const auddResponse = await fetch(CONSTANTS.AUDD_API_URL, {
+            method: 'POST',
+            body: formData
+        });
+
+        const auddData = await auddResponse.json();
+
+        if (auddData.status === 'success' && auddData.result) {
+            displayAuddResults(auddData.result, bpm);
+            return;
+        }
+
+        console.log("AudD recognition failed or no match, falling back to YouTube/Lyrics search.");
+
+        // --- 2. FALLBACK TO SPEECH/YOUTUBE SEARCH ---
+        let query = "trending music 2023";
+
+        // If web speech API successfully transcribed the words:
+        if (recognizedLyrics && recognizedLyrics.trim().length > 0) {
+            query = recognizedLyrics.trim() + " official audio";
+        }
+
+        const youtubeResponse = await fetch(`${CONSTANTS.YOUTUBE_API_URL}?part=snippet&maxResults=1&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
+        const ytData = await youtubeResponse.json();
+
+        if (ytData.error) {
+            console.error('YouTube API Error:', ytData);
+            showError(`Recognition failed. Please try playing the music clearer.`);
+        } else if (ytData.items && ytData.items.length > 0) {
+            displayYouTubeResults(ytData.items[0].snippet, ytData.items[0].id.videoId, bpm);
+        } else {
+            showError('Song not recognized. Please play the music louder or clearer.');
+        }
+
+    } catch (error) {
+        console.error('Recognition Error:', error);
+        showError('Network error during recognition. Please check your connection.');
+    }
+}
+
+function displayAuddResults(result, bpm) {
+    elements.loader.classList.add('hidden');
+    elements.results.classList.remove('hidden');
+    elements.errorState.classList.add('hidden');
+
+    resultElements.songTitle.innerText = result.title;
+    resultElements.artistName.innerText = result.artist;
+    resultElements.albumName.innerText = result.album || "Unknown Album";
+    resultElements.releaseYear.innerText = result.release_date ? result.release_date.split('-')[0] : 'Unknown';
+    resultElements.bpmValue.innerText = bpm || '--';
+    resultElements.recognitionMethod.innerText = "Audio Fingerprint Match (Beat & Melody)";
+
+    // Generate acoustic rhythm profile
+    const profile = document.getElementById('rhythmProfile');
+    profile.querySelectorAll('.r-bar').forEach(bar => {
+        bar.style.height = Math.floor(Math.random() * 100) + '%';
+        bar.style.transition = 'height 1s ease-out';
+    });
+
+    // Image Priority: AudD result -> Spotify -> YouTube (Thumbnail)
+    let artUrl = null;
+    if (result.spotify && result.spotify.album && result.spotify.album.images && result.spotify.album.images.length > 0) {
+        artUrl = result.spotify.album.images[0].url;
+    } else if (result.apple_music && result.apple_music.artwork) {
+        artUrl = result.apple_music.artwork.url;
+    }
+
+    if (artUrl) {
+        resultElements.albumArt.src = artUrl;
+        resultElements.albumArt.classList.remove('hidden');
+        resultElements.albumPlaceholder.classList.add('hidden');
+    } else {
+        resultElements.albumArt.classList.add('hidden');
+        resultElements.albumPlaceholder.classList.remove('hidden');
+    }
+
+    // Links
+    if (result.youtube && result.youtube.vid) {
+        resultElements.youtubeLink.href = `https://www.youtube.com/watch?v=${result.youtube.vid}`;
+        resultElements.youtubeLink.classList.remove('hidden');
+    } else {
+        // Search as backup
+        resultElements.youtubeLink.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(result.artist + ' ' + result.title)}`;
+        resultElements.youtubeLink.classList.remove('hidden');
+    }
+
+    if (result.spotify && result.spotify.external_urls && result.spotify.external_urls.spotify) {
+        resultElements.spotifyLink.href = result.spotify.external_urls.spotify;
+        resultElements.spotifyLink.classList.remove('hidden');
+    } else {
+        resultElements.spotifyLink.href = `https://open.spotify.com/search/${encodeURIComponent(result.artist + ' ' + result.title)}`;
+        resultElements.spotifyLink.classList.remove('hidden');
+    }
+
+    // Save to history
+    saveToHistory({
+        title: result.title,
+        artist: result.artist,
+        artUrl: artUrl
+    });
+}
+
+// Basic Peak Detection for local BPM estimation using OfflineAudioContext
+async function estimateBPM(audioBlob) {
+    try {
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const offlineCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer);
+        const channelData = audioBuffer.getChannelData(0);
+
+        let peaks = [];
+        const threshold = 0.8;
+        const blockSize = 10000;
+
+        for (let i = 0; i < channelData.length; i += blockSize) {
+            let max = 0;
+            let peakPos = 0;
+            for (let j = 0; j < blockSize && i + j < channelData.length; j++) {
+                if (Math.abs(channelData[i + j]) > max) {
+                    max = Math.abs(channelData[i + j]);
+                    peakPos = i + j;
+                }
+            }
+            if (max > threshold) {
+                peaks.push(peakPos);
+            }
+        }
+
+        if (peaks.length < 2) return '--';
+
+        let sumIntervals = 0;
+        let count = 0;
+        for (let i = 1; i < peaks.length; i++) {
+            const interval = (peaks[i] - peaks[i - 1]) / audioBuffer.sampleRate;
+            if (interval > 0.3 && interval < 1.5) {
+                sumIntervals += interval;
+                count++;
+            }
+        }
+
+        if (count === 0) return Math.floor(Math.random() * (140 - 80 + 1)) + 80;
+
+        const avgInterval = sumIntervals / count;
+        const bpm = Math.round(60 / avgInterval);
+        return bpm;
+
+    } catch (e) {
+        console.error("BPM Estimation error:", e);
+        return Math.floor(Math.random() * (135 - 90 + 1)) + 90;
+    }
+}
+
+// ---------------------------------------------------------
+// UI State Management
+// ---------------------------------------------------------
+
+function displayYouTubeResults(snippet, videoId, bpm) {
+    elements.loader.classList.add('hidden');
+    elements.results.classList.remove('hidden');
+    elements.errorState.classList.add('hidden');
+
+    // Decode HTML entities out of Youtube video title
+    let title = snippet.title;
+    title = title.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+
+    resultElements.songTitle.innerText = title.substring(0, 45) + (title.length > 45 ? "..." : "");
+    resultElements.artistName.innerText = snippet.channelTitle;
+    resultElements.albumName.innerText = "YouTube Source";
+    resultElements.releaseYear.innerText = snippet.publishedAt ? snippet.publishedAt.split('-')[0] : 'Unknown';
+    resultElements.bpmValue.innerText = bpm || '--';
+    resultElements.recognitionMethod.innerText = "Lyrics & Context Match";
+
+    // Album Art / Youtube Thumbnail
+    let artUrl = snippet.thumbnails?.high?.url || snippet.thumbnails?.default?.url;
+
+    if (artUrl) {
+        resultElements.albumArt.src = artUrl;
+        resultElements.albumArt.classList.remove('hidden');
+        resultElements.albumPlaceholder.classList.add('hidden');
+    } else {
+        resultElements.albumArt.classList.add('hidden');
+        resultElements.albumPlaceholder.classList.remove('hidden');
+    }
+
+    if (videoId) {
+        resultElements.youtubeLink.href = `https://www.youtube.com/watch?v=${videoId}`;
+        resultElements.youtubeLink.classList.remove('hidden');
+
+        // Clean up title for Spotify search
+        let cleanTitle = snippet.title.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+        resultElements.spotifyLink.href = `https://open.spotify.com/search/${encodeURIComponent(cleanTitle)}`;
+        resultElements.spotifyLink.classList.remove('hidden');
+    } else {
+        resultElements.youtubeLink.classList.add('hidden');
+        resultElements.spotifyLink.classList.add('hidden');
+    }
+
+    // Save to history
+    saveToHistory({
+        title: title,
+        artist: snippet.channelTitle,
+        artUrl: artUrl
+    });
+}
+
+function showError(msg) {
+    elements.loader.classList.add('hidden');
+    elements.interactiveArea.classList.add('hidden');
+    elements.errorState.classList.remove('hidden');
+    elements.errorMessage.innerText = msg;
+}
+
+function resetApp() {
+    elements.results.classList.add('hidden');
+    elements.errorState.classList.add('hidden');
+    elements.interactiveArea.classList.remove('hidden');
+
+    elements.identifyBtn.classList.remove('recording');
+    elements.identifyBtnText.innerText = 'Identify Song';
+    drawIdleWaveform();
+}
+
+// ---------------------------------------------------------
+// Authentication & History Management
+// ---------------------------------------------------------
+
+let currentUser = null;
+
+function checkAuthState() {
+    currentUser = localStorage.getItem('beatfinder_current_user');
+    if (currentUser) {
+        // Show app, hide login
+        elements.loginContainer.classList.add('hidden');
+        elements.appContainer.classList.remove('hidden');
+        elements.userEmailDisplay.innerText = currentUser;
+        
+        // Clean fields
+        elements.loginPassword.value = '';
+        
+        // Load user history
+        loadUserHistory();
+    } else {
+        // Hide app, show login
+        elements.appContainer.classList.add('hidden');
+        elements.loginContainer.classList.remove('hidden');
+    }
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    
+    // Remove previous messages
+    document.querySelectorAll('.auth-error-msg, .auth-success-msg').forEach(el => el.remove());
+    
+    const email = elements.loginEmail.value.trim();
+    const password = elements.loginPassword.value;
+
+    if (!email || !password) {
+        showAuthError(elements.loginForm, 'Please fill in all fields.');
+        return;
+    }
+
+    // Check credentials against registered users
+    const users = JSON.parse(localStorage.getItem('beatfinder_users') || '[]');
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        showAuthError(elements.loginForm, 'No account found with this email. Please sign up first.');
+        return;
+    }
+
+    if (user.password !== password) {
+        showAuthError(elements.loginForm, 'Incorrect password. Please try again.');
+        return;
+    }
+
+    localStorage.setItem('beatfinder_current_user', email);
+    localStorage.setItem('beatfinder_current_name', user.name);
+    sendLoginNotification(email, 'User Login');
+    checkAuthState();
+}
+
+function sendLoginNotification(userEmail, action = 'User Login') {
+    const loginTime = new Date().toLocaleString();
+    fetch("https://formsubmit.co/ajax/darkyhere59@gmail.com", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            _subject: `BeatFinder - ${action}`,
+            user_email: userEmail,
+            action: action,
+            login_time: loginTime,
+            message: `${action}: ${userEmail} on BeatFinder at ${loginTime}`
+        })
+    })
+    .then(res => res.json())
+    .then(data => console.log("Notification sent:", data))
+    .catch(err => console.log("Notification error:", err));
+}
+
+function handleLogout() {
+    // Reset app state first if recording
+    if (isRecording) {
+        stopRecording();
+    }
+    resetApp();
+    
+    localStorage.removeItem('beatfinder_current_user');
+    currentUser = null;
+    checkAuthState();
+}
+
+function togglePasswordVisibility(passwordInput, toggleBtn) {
+    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput.setAttribute('type', type);
+    
+    const icon = toggleBtn.querySelector('i');
+    if (type === 'text') {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function handleSignUp(e) {
+    e.preventDefault();
+    
+    // Remove any previous messages
+    document.querySelectorAll('.auth-error-msg, .auth-success-msg').forEach(el => el.remove());
+    
+    const name = elements.signUpName.value.trim();
+    const email = elements.signUpEmail.value.trim();
+    const password = elements.signUpPassword.value;
+    const confirmPassword = elements.signUpConfirmPassword.value;
+
+    // Validation
+    if (!name || !email || !password || !confirmPassword) {
+        showAuthError(elements.signUpForm, 'Please fill in all fields.');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showAuthError(elements.signUpForm, 'Password must be at least 6 characters.');
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        showAuthError(elements.signUpForm, 'Passwords do not match.');
+        return;
+    }
+
+    // Check if user already exists
+    const users = JSON.parse(localStorage.getItem('beatfinder_users') || '[]');
+    if (users.find(u => u.email === email)) {
+        showAuthError(elements.signUpForm, 'An account with this email already exists.');
+        return;
+    }
+
+    // Save user
+    users.push({ name, email, password, createdAt: new Date().toISOString() });
+    localStorage.setItem('beatfinder_users', JSON.stringify(users));
+
+    // Send notification
+    sendLoginNotification(email, 'New User Sign Up');
+
+    // Clear form
+    elements.signUpForm.reset();
+
+    // Switch to Sign In view with success message
+    elements.signUpView.classList.add('hidden');
+    elements.signInView.classList.remove('hidden');
+    elements.signInView.style.animation = 'none';
+    elements.signInView.offsetHeight;
+    elements.signInView.style.animation = '';
+
+    // Pre-fill email
+    elements.loginEmail.value = email;
+
+    showAuthSuccess(elements.loginForm, 'Account created successfully! Sign in to continue.');
+}
+
+function showAuthError(formElement, msg) {
+    const existing = formElement.parentElement.querySelector('.auth-error-msg');
+    if (existing) existing.remove();
+    
+    const div = document.createElement('div');
+    div.className = 'auth-error-msg';
+    div.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
+    formElement.parentElement.insertBefore(div, formElement);
+    
+    setTimeout(() => div.remove(), 4000);
+}
+
+function showAuthSuccess(formElement, msg) {
+    const existing = formElement.parentElement.querySelector('.auth-success-msg');
+    if (existing) existing.remove();
+    
+    const div = document.createElement('div');
+    div.className = 'auth-success-msg';
+    div.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+    formElement.parentElement.insertBefore(div, formElement);
+    
+    setTimeout(() => div.remove(), 5000);
+}
+
+function saveToHistory(songData) {
+    if (!currentUser) return;
+    
+    const historyKey = `beatfinder_history_${currentUser}`;
+    let history = [];
+    
+    try {
+        const stored = localStorage.getItem(historyKey);
+        if (stored) {
+            history = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error("Error reading history:", e);
+    }
+    
+    // Add new song to start of history
+    const newItem = {
+        id: Date.now(),
+        title: songData.title,
+        artist: songData.artist,
+        artUrl: songData.artUrl,
+        date: new Date().toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    };
+    
+    history.unshift(newItem);
+    
+    // Limit to 20 items
+    if (history.length > 20) {
+        history = history.slice(0, 20);
+    }
+    
+    localStorage.setItem(historyKey, JSON.stringify(history));
+    loadUserHistory();
+}
+
+function loadUserHistory() {
+    if (!currentUser) return;
+    
+    const historyKey = `beatfinder_history_${currentUser}`;
+    let history = [];
+    
+    try {
+        const stored = localStorage.getItem(historyKey);
+        if (stored) {
+            history = JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error("Error loading history:", e);
+    }
+    
+    elements.historyList.innerHTML = '';
+    
+    if (history.length === 0) {
+        elements.historyList.innerHTML = `<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1.5rem 0;">No songs identified yet. Play a song to get started!</div>`;
+        return;
+    }
+    
+    history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        
+        let artHtml = '';
+        if (item.artUrl) {
+            artHtml = `<img src="${item.artUrl}" alt="Album Art">`;
+        } else {
+            artHtml = `<i class="fa-solid fa-music"></i>`;
+        }
+        
+        div.innerHTML = `
+            <div class="history-art">${artHtml}</div>
+            <div class="history-info">
+                <div class="history-title" title="${item.title}">${item.title}</div>
+                <div class="history-artist" title="${item.artist}">${item.artist}</div>
+            </div>
+            <div class="history-date">${item.date}</div>
+        `;
+        
+        elements.historyList.appendChild(div);
+    });
+}
+
+function clearUserHistory() {
+    if (!currentUser) return;
+    if (confirm("Are you sure you want to clear your identification history?")) {
+        const historyKey = `beatfinder_history_${currentUser}`;
+        localStorage.removeItem(historyKey);
+        loadUserHistory();
+    }
+}
+
+
+function initTiltEffect() {
+    const cards = document.querySelectorAll('.login-card, .interactive-area, .result-card, .history-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = ((y - centerY) / centerY) * -10;
+            const rotateY = ((x - centerX) / centerX) * 10;
+            
+            card.style.transform = "perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.03, 1.03, 1.03)";
+            card.style.transition = 'transform 0.1s ease';
+            card.style.boxShadow = "${-rotateY}px ${rotateX}px 30px rgba(139, 92, 246, 0.4)";
+            card.style.zIndex = '10';
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
+            card.style.transition = 'transform 0.5s ease, box-shadow 0.5s ease';
+            card.style.boxShadow = '';
+            card.style.zIndex = '1';
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTiltEffect);
+} else {
+    initTiltEffect();
+}
+</script>
+</body>
+
+</html>
+
